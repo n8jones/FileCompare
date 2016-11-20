@@ -10,14 +10,27 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 
 public class Main {
+	private final Map<Path, IFileNode> nodeCache = new HashMap<>();
+	private final Comparator<IFileNode> SIZE_COMP =
+			Comparator.comparingLong(n -> {
+				try {
+					return n.getSize();
+				}
+				catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+			});
 	private final String target1;
 	private final String target2;
 	private final MessageDigest digest;
@@ -47,10 +60,19 @@ public class Main {
 	public Collection<FilePair> findDuplicates() throws IOException {
 		Set<FilePair> processed = new HashSet<>();
 		List<IFileNode> nodes1 = findNodes(target1);
+		nodes1.sort(SIZE_COMP);
 		List<IFileNode> nodes2 = findNodes(target2);
+		nodes2.sort(SIZE_COMP);
 		List<FilePair> pairs = new ArrayList<>(nodes1.size());
+		int start = 0;
+		System.err.println("Matching...");
 		for (IFileNode node1 : nodes1) {
-			for (IFileNode node2 : nodes2) {
+			for (int i = start; i< nodes2.size(); i++) {
+				IFileNode node2 = nodes2.get(i);
+				if(node1.getSize() > node2.getSize()){
+					start = i;
+					break;
+				}
 				FilePair pair = new FilePair(node1, node2);
 				if (!processed.contains(pair)) {
 					processed.add(pair);
@@ -59,6 +81,7 @@ public class Main {
 				}
 			}
 		}
+		System.err.println("Done.");
 		return pairs;
 	}
 
@@ -96,7 +119,8 @@ public class Main {
 				if (Files.isDirectory(path))
 					Files.list(path).forEach(paths::add);
 				else if (Files.isRegularFile(path))
-					nodes.add(new PathFileNode(path, digest));
+					nodes.add(nodeCache.computeIfAbsent(path,
+							p -> new PathFileNode(p, digest)));
 			}
 		} while ((path = paths.poll()) != null);
 		return nodes;
