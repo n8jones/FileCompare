@@ -20,7 +20,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 
-public class Main {
+public class FindDuplicates {
 	private final Map<Path, IFileNode> nodeCache = new HashMap<>();
 	private final Comparator<IFileNode> SIZE_COMP =
 			Comparator.comparingLong(n -> {
@@ -35,7 +35,7 @@ public class Main {
 	private final String target2;
 	private final MessageDigest digest;
 
-	public Main(String target1, String target2, MessageDigest digest) {
+	public FindDuplicates(String target1, String target2, MessageDigest digest) {
 		this.target1 = Objects.requireNonNull(target1);
 		this.target2 = Objects.requireNonNull(target2);
 		this.digest = Objects.requireNonNull(digest);
@@ -44,11 +44,11 @@ public class Main {
 	public static void main(String[] args)
 			throws IOException, NoSuchAlgorithmException {
 		if (args.length != 2) {
-			System.out.println("Usage: java " + Main.class.getName()
+			System.out.println("Usage: java " + FindDuplicates.class.getName()
 					+ " [file/dir] [file/dir]");
 			return;
 		}
-		Main main = new Main(args[0], args[1], MessageDigest.getInstance("MD5"));
+		FindDuplicates main = new FindDuplicates(args[0], args[1], MessageDigest.getInstance("MD5"));
 		Collection<FilePair> duplicates = main.findDuplicates();
 		for (FilePair dup : duplicates)
 			System.out.printf("%s %s =>%n%s %s%n******%n",
