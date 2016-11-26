@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public abstract class MemoizedComparator<T> implements IFileComparator {
+public abstract class AbstractComparator<T> implements IFileComparator {
 	private final Map<IFileNode, T> values = new HashMap<>();
 
 	public abstract T computeValue(IFileNode node) throws IOException;

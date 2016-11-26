@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 
-public class ChecksumComparator extends MemoizedComparator<byte[]> {
+public class ChecksumComparator extends AbstractComparator<byte[]> {
 	private final MessageDigest digest;
 
 	public ChecksumComparator(MessageDigest md) {
