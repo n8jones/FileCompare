@@ -9,7 +9,6 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -80,8 +79,13 @@ public class FindDuplicates {
 		Set<FilePair> processed = new HashSet<>();
 		List<IFileNode> nodes1 = findNodes(target1);
 		nodes1.sort(SIZE_COMP);
-		List<IFileNode> nodes2 = findNodes(target2);
-		nodes2.sort(SIZE_COMP);
+		List<IFileNode> nodes2;
+		if (target1.equals(target2))
+			nodes2 = nodes1;
+		else {
+			nodes2 = findNodes(target2);
+			nodes2.sort(SIZE_COMP);
+		}
 		List<FilePair> pairs = new ArrayList<>(nodes1.size());
 		int start = 0;
 		log.info("Matching...");

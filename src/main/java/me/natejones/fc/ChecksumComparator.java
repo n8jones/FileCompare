@@ -22,10 +22,4 @@ public class ChecksumComparator extends MemoizedComparator<byte[]> {
 			return digest.digest();
 		}
 	}
-
-	@Override
-	public double compare(byte[] value1, byte[] value2) {
-		return MessageDigest.isEqual(value1, value2) ? 1.0 : 0.0;
-	}
-
 }
