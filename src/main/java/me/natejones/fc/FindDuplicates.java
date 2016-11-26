@@ -2,6 +2,7 @@ package me.natejones.fc;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -19,8 +20,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
+import java.util.logging.Logger;
 
 public class FindDuplicates {
+	private static final Logger log =
+			Logger.getLogger(FindDuplicates.class.getName());
 	private final Map<Path, IFileNode> nodeCache = new HashMap<>();
 	private final Comparator<IFileNode> SIZE_COMP =
 			Comparator.comparingLong(n -> {
@@ -48,13 +52,24 @@ public class FindDuplicates {
 					+ " [file/dir] [file/dir]");
 			return;
 		}
-		FindDuplicates main = new FindDuplicates(args[0], args[1], MessageDigest.getInstance("MD5"));
+		FindDuplicates main = new FindDuplicates(args[0], args[1],
+				MessageDigest.getInstance("MD5"));
 		Collection<FilePair> duplicates = main.findDuplicates();
-		for (FilePair dup : duplicates)
-			System.out.printf("%s %s =>%n%s %s%n******%n",
-					dup.getNode1().getSize(), dup.getNode1().getName(),
-					dup.getNode2().getSize(), dup.getNode2().getName());
-
+		final PrintStream out = System.out;
+		int count = 0;
+		out.println("[");
+		for (FilePair dup : duplicates){
+			if(count++ < 1)
+				out.println("\t{");
+			else 
+				out.println("\t,{");
+			out.print("\t\t\"node1\": \"");
+			out.print(dup.getNode1().getName().replace("\\", "\\\\"));
+			out.print("\",\n\t\t\"node2\": \"");
+			out.print(dup.getNode2().getName().replace("\\", "\\\\"));
+			out.println("\"\n\t}");
+		}
+		out.print("]");
 	}
 
 	public Collection<FilePair> findDuplicates() throws IOException {
@@ -65,11 +80,11 @@ public class FindDuplicates {
 		nodes2.sort(SIZE_COMP);
 		List<FilePair> pairs = new ArrayList<>(nodes1.size());
 		int start = 0;
-		System.err.println("Matching...");
+		log.info("Matching...");
 		for (IFileNode node1 : nodes1) {
-			for (int i = start; i< nodes2.size(); i++) {
+			for (int i = start; i < nodes2.size(); i++) {
 				IFileNode node2 = nodes2.get(i);
-				if(node1.getSize() > node2.getSize()){
+				if (node1.getSize() > node2.getSize()) {
 					start = i;
 					break;
 				}
@@ -81,7 +96,7 @@ public class FindDuplicates {
 				}
 			}
 		}
-		System.err.println("Done.");
+		log.info("Done.");
 		return pairs;
 	}
 
@@ -112,8 +127,8 @@ public class FindDuplicates {
 	public List<IFileNode> findNodes(String target) throws IOException {
 		List<IFileNode> nodes = new ArrayList<>();
 		Queue<Path> paths = new LinkedList<>();
-		Path path = Paths.get(target).toAbsolutePath();
-		System.err.println("Accessing: " + path);
+		Path path = Paths.get(target).toAbsolutePath().normalize();
+		log.info("Accessing: " + path);
 		do {
 			if (Files.isReadable(path)) {
 				if (Files.isDirectory(path))
