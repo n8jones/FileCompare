@@ -37,12 +37,13 @@ public class FindDuplicates {
 			});
 	private final String target1;
 	private final String target2;
-	private final MessageDigest digest;
+	private final List<IFileComparator> comparators;
 
-	public FindDuplicates(String target1, String target2, MessageDigest digest) {
+	public FindDuplicates(String target1, String target2,
+			List<IFileComparator> comparators) {
 		this.target1 = Objects.requireNonNull(target1);
 		this.target2 = Objects.requireNonNull(target2);
-		this.digest = Objects.requireNonNull(digest);
+		this.comparators = Objects.requireNonNull(comparators);
 	}
 
 	public static void main(String[] args)
@@ -52,16 +53,19 @@ public class FindDuplicates {
 					+ " [file/dir] [file/dir]");
 			return;
 		}
-		FindDuplicates main = new FindDuplicates(args[0], args[1],
-				MessageDigest.getInstance("MD5"));
+		List<IFileComparator> comparators = new ArrayList<>();
+		comparators.add(new SizeComparator());
+		comparators.add(new TypeComparator());
+		comparators.add(new ChecksumComparator(MessageDigest.getInstance("MD5")));
+		FindDuplicates main = new FindDuplicates(args[0], args[1], comparators);
 		Collection<FilePair> duplicates = main.findDuplicates();
 		final PrintStream out = System.out;
 		int count = 0;
 		out.println("[");
-		for (FilePair dup : duplicates){
-			if(count++ < 1)
+		for (FilePair dup : duplicates) {
+			if (count++ < 1)
 				out.println("\t{");
-			else 
+			else
 				out.println("\t,{");
 			out.print("\t\t\"node1\": \"");
 			out.print(dup.getNode1().getName().replace("\\", "\\\\"));
@@ -101,14 +105,12 @@ public class FindDuplicates {
 	}
 
 	public boolean match(IFileNode node1, IFileNode node2) throws IOException {
-		if (Objects.equals(node1.getName(), node2.getName()))
+		if (Objects.equals(node1, node2))
 			return false;
-		if (node1.getSize() != node2.getSize())
-			return false;
-		if (!Objects.equals(node1.getType(), node2.getType()))
-			return false;
-		if (!Arrays.equals(node1.getChecksum(), node2.getChecksum()))
-			return false;
+		for (IFileComparator comparator : comparators) {
+			if (comparator.compare(node1, node2) != 1.0)
+				return false;
+		}
 		try (InputStream is1 = node1.open(); InputStream is2 = node2.open()) {
 			byte[] buffer1 = new byte[1024];
 			byte[] buffer2 = new byte[1024];
@@ -134,8 +136,8 @@ public class FindDuplicates {
 				if (Files.isDirectory(path))
 					Files.list(path).forEach(paths::add);
 				else if (Files.isRegularFile(path))
-					nodes.add(nodeCache.computeIfAbsent(path,
-							p -> new PathFileNode(p, digest)));
+					nodes.add(
+							nodeCache.computeIfAbsent(path, p -> new PathFileNode(p)));
 			}
 		} while ((path = paths.poll()) != null);
 		return nodes;

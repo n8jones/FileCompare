@@ -10,7 +10,5 @@ interface IFileNode {
 
 	String getType() throws IOException;
 
-	byte[] getChecksum() throws IOException;
-
 	InputStream open() throws IOException;
 }

@@ -8,15 +8,10 @@ import java.security.MessageDigest;
 
 class PathFileNode implements IFileNode {
 	private final Path path;
-	private final MessageDigest digest;
 	private final String name;
-	private long size = -1;
-	private String type;
-	private byte[] checksum;
 
-	public PathFileNode(Path path, MessageDigest digest) {
+	public PathFileNode(Path path) {
 		this.path = path;
-		this.digest = digest;
 		this.name = path.toString();
 	}
 
@@ -25,31 +20,12 @@ class PathFileNode implements IFileNode {
 	}
 
 	public long getSize() throws IOException {
-		if (size < 0)
-			size = Files.size(path);
-		return size;
+		return Files.size(path);
 	}
 
 	@Override
 	public String getType() throws IOException {
-		if (type == null)
-			type = Files.probeContentType(path);
-		return type;
-	}
-
-	@Override
-	public byte[] getChecksum() throws IOException {
-		if (checksum == null) {
-			try (InputStream is = open()) {
-				byte[] buffer = new byte[1024];
-				int size;
-				digest.reset();
-				while ((size = is.read(buffer)) > 0)
-					digest.update(buffer, 0, size);
-				checksum = digest.digest();
-			}
-		}
-		return checksum;
+		return Files.probeContentType(path);
 	}
 
 	@Override
