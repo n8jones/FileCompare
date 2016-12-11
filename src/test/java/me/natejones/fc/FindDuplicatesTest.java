@@ -26,17 +26,19 @@ public class FindDuplicatesTest {
 		assertTrue("pair node1", pair.getNode1().getName().endsWith("A.txt"));
 	}
 
-//	@Test
-//	public void test_checksum() throws Exception {
-//		MessageDigest md = MessageDigest.getInstance("MD5");
-//		IFileNode a =
-//				new PathFileNode(Paths.get("./src/test/resources/A.txt"), md);
-//		IFileNode a2 =
-//				new PathFileNode(Paths.get("./src/test/resources/A2.txt"), md);
-//		assertThat("checksum equals", a.getChecksum(), equalTo(a2.getChecksum()));
-//		IFileNode b =
-//				new PathFileNode(Paths.get("./src/test/resources/B.txt"), md);
-//		assertThat("checksum not equals", a.getChecksum(),
-//				not(equalTo(b.getChecksum())));
-//	}
+	@Test
+	public void test_find_duplicates_search_archives() throws Exception {
+		MessageDigest md = MessageDigest.getInstance("MD5");
+		List<IFileComparator> comparators = new ArrayList<>();
+		comparators.add(new SizeComparator());
+		comparators.add(new TypeComparator());
+		comparators.add(new ChecksumComparator(md));
+		FindDuplicates fd = new FindDuplicates("./src/test/resources/test.zip",
+				"./src/test/resources/test.zip", comparators);
+		fd.setSearchArchives(true);
+		Collection<FilePair> pairs = fd.findDuplicates();
+		assertEquals("pairs size", 1, pairs.size());
+		FilePair pair = pairs.iterator().next();
+		assertTrue("pair node1", pair.getNode1().getName().endsWith("A.txt"));
+	}
 }

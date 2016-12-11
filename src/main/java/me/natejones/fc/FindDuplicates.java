@@ -1,11 +1,16 @@
 package me.natejones.fc;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -20,6 +25,11 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.logging.Logger;
+
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.ArchiveException;
+import org.apache.commons.compress.archivers.ArchiveInputStream;
+import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 
 public class FindDuplicates {
 	private static final Logger log =
@@ -37,6 +47,7 @@ public class FindDuplicates {
 	private final String target1;
 	private final String target2;
 	private final List<IFileComparator> comparators;
+	private boolean searchArchives;
 
 	public FindDuplicates(String target1, String target2,
 			List<IFileComparator> comparators) {
@@ -46,7 +57,7 @@ public class FindDuplicates {
 	}
 
 	public static void main(String[] args)
-			throws IOException, NoSuchAlgorithmException {
+			throws IOException, NoSuchAlgorithmException, ArchiveException {
 		if (args.length != 2) {
 			System.out.println("Usage: java " + FindDuplicates.class.getName()
 					+ " [file/dir] [file/dir]");
@@ -75,7 +86,15 @@ public class FindDuplicates {
 		out.print("]");
 	}
 
-	public Collection<FilePair> findDuplicates() throws IOException {
+	public boolean isSearchArchives() {
+		return searchArchives;
+	}
+
+	public void setSearchArchives(boolean searchArchives) {
+		this.searchArchives = searchArchives;
+	}
+
+	public Collection<FilePair> findDuplicates() throws IOException, ArchiveException {
 		Set<FilePair> processed = new HashSet<>();
 		List<IFileNode> nodes1 = findNodes(target1);
 		nodes1.sort(SIZE_COMP);
@@ -130,19 +149,44 @@ public class FindDuplicates {
 		return true;
 	}
 
-	public List<IFileNode> findNodes(String target) throws IOException {
+	public List<IFileNode> findNodes(String target)
+			throws IOException, ArchiveException {
 		List<IFileNode> nodes = new ArrayList<>();
 		Queue<Path> paths = new LinkedList<>();
 		Path path = Paths.get(target).toAbsolutePath().normalize();
+		FileSystem fs = path.getFileSystem();
+		PathMatcher zipMatcher = fs.getPathMatcher("glob:**.zip");
 		log.info("Accessing: " + path);
 		do {
 			if (Files.isReadable(path)) {
 				if (Files.isDirectory(path))
 					Files.list(path).forEach(paths::add);
-				else if (Files.isRegularFile(path))
+				else if (Files.isRegularFile(path)) {
 					nodes.add(
 							nodeCache.computeIfAbsent(path, p -> new PathFileNode(p)));
+					if (isSearchArchives()) {
+						if (zipMatcher.matches(path)) {
+							ArchiveStreamFactory asf = new ArchiveStreamFactory();
+							try (InputStream in = new BufferedInputStream(
+									Files.newInputStream(path, StandardOpenOption.READ));
+									ArchiveInputStream ain =
+											asf.createArchiveInputStream(in)) {
+								ArchiveEntry entry;
+								while ((entry = ain.getNextEntry()) != null) {
+									if (entry.isDirectory())
+										continue;
+									nodes.add(new ArchiveFileNode(path, entry.getName(),
+											entry.getSize()));
+								}
+							}
+						}
+					}
+				}
+				else
+					log.warning("Will not process: " + path);
 			}
+			else
+				log.warning("Not readable: " + path);
 		} while ((path = paths.poll()) != null);
 		return nodes;
 	}
